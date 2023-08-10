@@ -49,7 +49,7 @@ def havaSicaklikSorgu(i):
     statusEn = status
     text = TextBlob(status)
     status = text.translate(from_lang="en", to="tr").title()
-    if status == "Temizlemek":
+    if statusEn == "clear" or "mostly clear" or "partly clear":
         status = "Açık, Temiz Hava"
     print(status)
 
@@ -114,9 +114,15 @@ class Pencere(QWidget):
 
 
         self.label = QLabel("", self)
-        self.label.setGeometry(10, 260, 350, 100)
+        self.label.setGeometry(10, 245, 350, 100)
         font.setPointSize(16)
         self.label.setFont(font)
+
+        self.label_saved = QLabel("", self)
+        self.label_saved.setGeometry(10, 285, 350, 100)
+        font.setPointSize(14)
+        self.label_saved.setFont(font)
+        font.setBold(True)
 
 
     def hangiBolge(self):
@@ -147,6 +153,8 @@ class Pencere(QWidget):
         #    QtGui.QPixmap(
         #        f"../../PycharmProjects/havaDurumuUyg/images/cities/{self.hangiBolge()[self.acilirListeSehirler.currentIndex()].lower()}"
         #        f".jpg"))
+
+        self.label_saved.setText("")
 
         if self.acilirListeSehirler.currentIndex() == -1:
             self.label.setText("Lütfen Dilediğiniz Bölgeden Bir Şehir Seçiniz.")
@@ -188,10 +196,11 @@ class Pencere(QWidget):
             saat = f"{an.hour}:{min}"
 
             imlec.execute(f"""INSERT INTO havaDurumuInfo 
-                    VALUES(?, ?, ?, ?) """, (tarih, saat, sehirSicaklikDerece, sehir))
+                    VALUES(?, ?, ?, ?) """, (tarih, saat, sehirSicaklikDerece, self.hangiBolge()[self.acilirListeSehirler.currentIndex()]))
 
             database_connect.commit()
             database_connect.close()
+            self.label_saved.setText("<font color='#068000'>Kaydedildi.</font>")
         else:
             self.label.setText("Lütfen Önce İstediğiniz Şehrin Hava Durumunu Ekrana Yazdırın.")
 
