@@ -1,55 +1,64 @@
-import sys
-import feedparser
-from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLabel, QComboBox
-import threading
 import datetime
-from datetime import date
-import trSehirler
 import sqlite3
+import sys
+import threading
+import time
+
+from textblob import TextBlob
+import feedparser
+from PyQt5 import QtCore, QtGui
+from PyQt5.QtWidgets import QWidget, QApplication, QPushButton, QLabel, QComboBox
+from textblob import TextBlob
+
+import fonksiyonlar
+import trSehirler
 
 an = datetime.datetime.now()
-
-def sehirHarfReplace(sehirGirdi):
-    sehir = sehirGirdi.replace("ç", "c")
-    sehir = sehir.replace("ö", "o")
-    sehir = sehir.replace("ü", "u")
-    sehir = sehir.replace("ı", "i")
-    sehir = sehir.replace("ğ", "g")
-    sehir = sehir.replace("ş", "s")
-
-    sehir = sehir.replace("Ç", "C")
-    sehir = sehir.replace("Ö", "O")
-    sehir = sehir.replace("Ü", "U")
-    sehir = sehir.replace("İ", "I")
-    sehir = sehir.replace("Ğ", "G")
-    sehir = sehir.replace("Ş", "S")
-    sehir = sehir.upper()
-    return sehir
-
 
 def havaSicaklikSorgu(i):
     global sehirSicaklik
     global sehir
     global sehirSicaklikDerece
+    global status
+    global statusEn
+    status = ""
     postaKodu = 10000  # İki satır alttaki "feeder.parser()" fonksiyonu, posta kodu değerine bağlı olmaksızın doğru çalışıyor.
-    sehir = sehirHarfReplace(i)
+    sehir = fonksiyonlar.sehirHarfReplace(i)
     parse = feedparser.parse(f"https://rss.accuweather.com/rss/liveweather_rss.asp?metric=1&"
                              f"locCode=EUR|TR|{postaKodu}|{sehir}|")
     parse = parse["entries"][0]["summary"]
     parse = parse.split()
+    sehir = sehir.lower()
 
     if sehir != "hatay".upper():
         sehirSicaklik = parse[4]
         dereceCelcius = parse[5]
     else:
-        sehirSicaklik = parse[5]
-        dereceCelcius = parse[6]
+        sehirSicaklik = parse[4]
+        dereceCelcius = parse[5]
+
+    print(parse[8])
+    print(parse)
+
+    if parse[8] == '<img':
+        status = parse[7]
+    else:
+        status = str(parse[7] + " " + parse[8])
+    print("--")
+    print(status)
+    statusEn = status
+    text = TextBlob(status)
+    status = text.translate(from_lang="en", to="tr").title()
+    if status == "Temizlemek":
+        status = "Açık, Temiz Hava"
+    print(status)
 
     sehirSicaklikDerece = f"{sehirSicaklik} {dereceCelcius}"
-    return f"{i.capitalize()} : {sehirSicaklik} {dereceCelcius}"
+    return f"{i.capitalize()} : {sehirSicaklik} {dereceCelcius}\n{status}"
 
 
 class Pencere(QWidget):
+
     def __init__(self):
         super().__init__()
         self.ozellikEkle()
@@ -61,11 +70,31 @@ class Pencere(QWidget):
     def ozellikEkle(self):
         self.resize(500, 500)
         self.move(700, 100)
-        self.setWindowTitle('Basit Pencere')
-        self.setMinimumSize(500, 500)
-        self.setMaximumSize(500, 500)
+        self.setWindowTitle('Hava Durumu Öğren')
+        self.setMinimumSize(450, 450)
+        self.setMaximumSize(450, 450)
 
     def ekOzellikEkle(self):
+
+        font = QtGui.QFont()
+
+        self.label_img = QLabel(self)
+        self.label_img.setGeometry(QtCore.QRect(1, 1, 448, 448))
+        self.label_img.setScaledContents(True)
+        self.label_img.setStyleSheet(
+            f"background-image: url(:../../PycharmProjects/havaDurumuUyg/images/weatherConditions/weather"
+            f".jpg);")
+
+        self.label_img.setPixmap(
+            QtGui.QPixmap(
+                f"../../PycharmProjects/havaDurumuUyg/images/weatherConditions/weather"
+                f".jpg"))
+
+        self.label_bg = QLabel(self)
+        self.label_bg.setGeometry(QtCore.QRect(1, 1, 448, 448))
+        self.label_bg.setScaledContents(True)
+
+
         self.acilirListeBolge = QComboBox(self)
         self.acilirListeBolge.addItems(trSehirler.bolgeler)
         self.acilirListeBolge.setGeometry(10, 10, 200, 25)
@@ -77,14 +106,18 @@ class Pencere(QWidget):
         self.butonIceAktar = QPushButton("Şehirleri İçe Aktar", self)
         self.butonIceAktar.setGeometry(10, 50, 110, 30)
 
-        self.butonYazdir = QPushButton("Yazdır", self)
-        self.butonYazdir.setGeometry(250, 250, 100, 40)
+        self.butonYazdir = QPushButton("Hava Sıcaklığını Göster", self)
+        self.butonYazdir.setGeometry(150, 380, 130, 30)
 
-        self.butonKaydet = QPushButton("Kaydet", self)
-        self.butonKaydet.setGeometry(250, 300, 100, 50)
+        self.butonKaydet = QPushButton("Veritabanına Kaydet", self)
+        self.butonKaydet.setGeometry(300, 380, 130, 30)
+
 
         self.label = QLabel("", self)
-        self.label.setGeometry(10, 400, 350, 100)
+        self.label.setGeometry(10, 260, 350, 100)
+        font.setPointSize(16)
+        self.label.setFont(font)
+
 
     def hangiBolge(self):
         if self.acilirListeBolge.currentIndex() == 0:
@@ -103,8 +136,17 @@ class Pencere(QWidget):
             return trSehirler.doguAnadoluSehirleri
         else:
             return trSehirler.guneydoguAnadoluSehirleri
-
     def tiklandiYazdir(self):
+
+
+        #self.label_img.setStyleSheet(
+        #   f"background-image: url(:../../PycharmProjects/havaDurumuUyg/images/cities/{self.hangiBolge()[self.acilirListeSehirler.currentIndex()].lower()}"
+        #  f".jpg);")
+
+        #self.label_img.setPixmap(
+        #    QtGui.QPixmap(
+        #        f"../../PycharmProjects/havaDurumuUyg/images/cities/{self.hangiBolge()[self.acilirListeSehirler.currentIndex()].lower()}"
+        #        f".jpg"))
 
         if self.acilirListeSehirler.currentIndex() == -1:
             self.label.setText("Lütfen Dilediğiniz Bölgeden Bir Şehir Seçiniz.")
@@ -112,30 +154,46 @@ class Pencere(QWidget):
             self.label.setText("Yükleniyor...")
             self.label.setText(havaSicaklikSorgu(self.hangiBolge()[self.acilirListeSehirler.currentIndex()]))
 
+        time.sleep(0.5)
+        print("cp1")
+        print(statusEn.lower())
+        self.label_bg.setStyleSheet(
+            f"background-image: url(:../../PycharmProjects/havaDurumuUyg/images/weatherConditions/{statusEn.lower()}"
+            f".jpg);")
+
+        print("cp2")
+        self.label_bg.setPixmap(
+            QtGui.QPixmap(
+                f"../../PycharmProjects/havaDurumuUyg/images/weatherConditions/{statusEn.lower()}"
+                f".jpg"))
+        print("cp3")
+
     def butonaTiklandi(self):
+
         thread = threading.Thread(target=self.tiklandiYazdir)
         thread.start()
 
     def kaydet(self):
-        database_connect = sqlite3.connect("havaDurumu.db")
-        imlec = database_connect.cursor()
-        imlec.execute(
-            """CREATE TABLE IF NOT EXISTS havaDurumuInfo
-            (tarih TEXT, saat TEXT, sicaklilk INTEGER , sehir TEXT)""")
-        print(date.today())
-        print("checkpoint 1")
-        min = an.minute
-        if min < 10:
-            min = str(0,min)
-        print(min)
-        tarih = f"{an.day}/{an.month}/{an.year}"
-        saat = f"{an.hour}:{an.minute}"
-        print("checkpoint 2")
-        imlec.execute(f"""INSERT INTO havaDurumuInfo 
-        VALUES(?, ?, ?, ?) """,(tarih, saat, sehirSicaklikDerece, sehir))
-        print("checkpoint 3")
-        database_connect.commit()
-        database_connect.close()
+        if self.label.text() != "":
+            database_connect = sqlite3.connect("havaDurumu.db")
+            imlec = database_connect.cursor()
+            imlec.execute(
+                """CREATE TABLE IF NOT EXISTS havaDurumuInfo
+                (tarih TEXT, saat TEXT, sicaklilk INTEGER , sehir TEXT)""")
+            min = str(an.minute)
+            if an.minute < 10:
+                min = f"{0}{min}"
+
+            tarih = f"{an.day}/{an.month}/{an.year}"
+            saat = f"{an.hour}:{min}"
+
+            imlec.execute(f"""INSERT INTO havaDurumuInfo 
+                    VALUES(?, ?, ?, ?) """, (tarih, saat, sehirSicaklikDerece, sehir))
+
+            database_connect.commit()
+            database_connect.close()
+        else:
+            self.label.setText("Lütfen Önce İstediğiniz Şehrin Hava Durumunu Ekrana Yazdırın.")
 
     def tiklandiIceAktar(self):
         self.acilirListeSehirler.clear()
