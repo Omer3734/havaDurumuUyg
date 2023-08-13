@@ -48,9 +48,13 @@ def havaSicaklikSorgu(i):
     print(status)
     statusEn = status
     text = TextBlob(status)
-    status = text.translate(from_lang="en", to="tr").title()
     if statusEn == "clear" or "mostly clear" or "partly clear":
-        status = "Açık, Temiz Hava"
+       status = "Açık, Temiz Hava"
+    else:
+       pass
+    status = text.translate(from_lang="en", to="tr").title()
+    print(statusEn)
+
     print(status)
 
     sehirSicaklikDerece = f"{sehirSicaklik} {dereceCelcius}"
