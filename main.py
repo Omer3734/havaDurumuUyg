@@ -29,33 +29,37 @@ def havaSicaklikSorgu(i):
     parse = parse["entries"][0]["summary"]
     parse = parse.split()
     sehir = sehir.lower()
-
-    if sehir != "hatay".upper():
+    print(sehir)
+    print(parse[0])
+    if sehir.upper() != "hatay".upper():
+        print("1")
         sehirSicaklik = parse[4]
         dereceCelcius = parse[5]
+        if parse[8] == '<img':
+            status = parse[7]
+        else:
+            status = str(parse[7] + " " + parse[8])
     else:
-        sehirSicaklik = parse[4]
-        dereceCelcius = parse[5]
+        print("2")
+        sehirSicaklik = parse[5]
+        dereceCelcius = parse[6]
+        print(f"{i.capitalize()} : {sehirSicaklik} {dereceCelcius}\n{status}")
+        if parse[9] == '<img':
+            status = parse[8]
+        else:
+            status = str(parse[8] + " " + parse[9])
 
-    print(parse[8])
     print(parse)
 
-    if parse[8] == '<img':
-        status = parse[7]
-    else:
-        status = str(parse[7] + " " + parse[8])
+
     print("--")
     print(status)
     statusEn = status
     text = TextBlob(status)
-    if statusEn == "clear" or "mostly clear" or "partly clear":
-       status = "Açık, Temiz Hava"
-    else:
-       pass
     status = text.translate(from_lang="en", to="tr").title()
-    print(statusEn)
-
-    print(status)
+    print(status.lower())
+    if status.lower() == "temizlemek":
+        status = "Açık, Temiz Hava"
 
     sehirSicaklikDerece = f"{sehirSicaklik} {dereceCelcius}"
     return f"{i.capitalize()} : {sehirSicaklik} {dereceCelcius}\n{status}"
@@ -149,6 +153,9 @@ class Pencere(QWidget):
     def tiklandiYazdir(self):
 
 
+        #   Aşağıda yorum satırı halinde duran iki kod bloğu,
+        #   ekrana hava durumu bilgisi istenen şehre ait bir fotoğraf bastırır.
+
         #self.label_img.setStyleSheet(
         #   f"background-image: url(:../../PycharmProjects/havaDurumuUyg/images/cities/{self.hangiBolge()[self.acilirListeSehirler.currentIndex()].lower()}"
         #  f".jpg);")
@@ -163,22 +170,19 @@ class Pencere(QWidget):
         if self.acilirListeSehirler.currentIndex() == -1:
             self.label.setText("Lütfen Dilediğiniz Bölgeden Bir Şehir Seçiniz.")
         else:
+
             self.label.setText("Yükleniyor...")
             self.label.setText(havaSicaklikSorgu(self.hangiBolge()[self.acilirListeSehirler.currentIndex()]))
 
         time.sleep(0.5)
-        print("cp1")
-        print(statusEn.lower())
         self.label_bg.setStyleSheet(
             f"background-image: url(:../../PycharmProjects/havaDurumuUyg/images/weatherConditions/{statusEn.lower()}"
             f".jpg);")
 
-        print("cp2")
         self.label_bg.setPixmap(
             QtGui.QPixmap(
                 f"../../PycharmProjects/havaDurumuUyg/images/weatherConditions/{statusEn.lower()}"
                 f".jpg"))
-        print("cp3")
 
     def butonaTiklandi(self):
 
